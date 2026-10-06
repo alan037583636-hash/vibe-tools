@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3 分鐘極限交易員</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #080c14;
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      background-image: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-feature-settings: "tnum" on, "zero" on;
+    }
+
+    /* Screens */
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 960px;
+      padding: 20px;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .terminal-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: inherit;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-long {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    }
+    .btn-long:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
+      filter: brightness(1.1);
+    }
+
+    .btn-short {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+    }
+    .btn-short:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.55);
+      filter: brightness(1.1);
+    }
+
+    .btn-close {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+    }
+    .btn-close:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.55);
+      filter: brightness(1.1);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 24px rgba(59, 130, 246, 0.6);
+      transform: translateY(-2px);
+    }
+
+    /* Colors */
+    .text-green { color: #10b981; }
+    .text-red { color: #ef4444; }
+    .text-yellow { color: #f59e0b; }
+    .bg-green-soft { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .bg-red-soft { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .bg-gray-soft { background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); }
+
+    /* Animations */
+    .flash-up {
+      animation: flashGreen 0.4s ease-out;
+    }
+    .flash-down {
+      animation: flashRed 0.4s ease-out;
+    }
+    @keyframes flashGreen {
+      0% { color: #34d399; text-shadow: 0 0 25px rgba(52, 211, 153, 0.9); }
+      100% { }
+    }
+    @keyframes flashRed {
+      0% { color: #f87171; text-shadow: 0 0 25px rgba(248, 113, 113, 0.9); }
+      100% { }
+    }
+
+    .pulse-badge {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulseDot 1.2s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Top info bar */
+    .info-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #1e293b;
+      padding: 14px 18px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+    }
+    .stat-val {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    /* Alert Banner */
+    #alertBanner {
+      display: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-align: center;
+      margin-bottom: 16px;
+      animation: alertSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes alertSlide {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 歡迎畫面 -->
+  <div id="welcomeScreen" class="screen active" style="text-align: center; max-width: 580px;">
+    <div class="terminal-card" style="padding: 44px 30px;">
+      <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; color: #60a5fa; margin-bottom: 20px; font-weight: 600;">
+        ⚡ 華爾街終端機高頻模擬器
+      </div>
+      <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; background: linear-gradient(135deg, #fff 30%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        3 分鐘極限交易員
+      </h1>
+      <p style="font-size: 1.15rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 32px;">
+        你有 <strong style="color: #34d399;" class="mono">$10,000</strong> 本金，<strong style="color: #60a5fa;" class="mono">3 分鐘</strong> 時間。<br>
+        市場瘋狂波動，你會暴富還是破產？
+      </p>
+
+      <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin-bottom: 32px; text-align: left; font-size: 0.88rem; color: #94a3b8; line-height: 1.6;">
+        <div style="color: #f8fafc; font-weight: 700; margin-bottom: 8px;">🎮 遊戲規則快速導覽：</div>
+        • 價格每 0.5 秒跳動一次（80% 正常波動，10% 暴漲 +5~15%，10% 暴跌 -5~15%）<br>
+        • 每次下單均為「全倉 (All-in)」模式，極速致富或一鍵爆倉<br>
+        • 時間到期 (00:00) 系統將強制平倉結算，本金歸零提早淘汰！
+      </div>
+
+      <button id="startBtn" class="btn btn-primary" style="font-size: 1.15rem; padding: 16px 40px; width: 100%;">
+        開始挑戰 🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. 遊戲主畫面 -->
+  <div id="gameScreen" class="screen">
+    <!-- 頂部資訊列 -->
+    <div class="info-bar">
+      <div class="stat-box">
+        <div class="stat-title">⏳ 剩餘時間</div>
+        <div id="timerDisplay" class="stat-val mono text-yellow">03:00</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">💰 目前可用本金</div>
+        <div id="capitalDisplay" class="stat-val mono text-green">$10,000.00</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">📊 總累計報酬率</div>
+        <div id="totalReturnDisplay" class="stat-val mono text-gray">+0.00%</div>
+      </div>
+    </div>
+
+    <!-- 事件警報橫幅 -->
+    <div id="alertBanner"></div>
+
+    <!-- 中央價格與走勢區 -->
+    <div class="terminal-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 600;">EXTREME / USD • 實時行情</div>
+          <div id="priceDisplay" class="mono text-green" style="font-size: 3rem; font-weight: 800; line-height: 1.1; margin-top: 4px; transition: color 0.15s;">
+            1000.00
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">持倉狀態與損益</div>
+          <div id="positionBadge" class="bg-gray-soft" style="padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; display: inline-flex; align-items: center; margin-top: 6px;">
+            <span class="pulse-badge" style="background: #94a3b8;"></span> 目前空手
+          </div>
+          <div id="pnlDisplay" class="mono" style="font-size: 1.25rem; font-weight: 700; margin-top: 6px; color: #94a3b8;">
+            未實現損益: $0.00 (+0.00%)
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart.js 畫布 -->
+      <div style="position: relative; height: 260px; width: 100%;">
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 底部操作區 -->
+    <div class="terminal-card" style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+        <button id="longBtn" class="btn btn-long" style="padding: 20px; font-size: 1.25rem;">
+          做多 (Long) 🟢
+        </button>
+        <button id="shortBtn" class="btn btn-short" style="padding: 20px; font-size: 1.25rem;">
+          做空 (Short) 🔴
+        </button>
+        <button id="closeBtn" class="btn btn-close" style="padding: 20px; font-size: 1.25rem;" disabled>
+          平倉 (Close) ⚡
+        </button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 0.8rem; color: #64748b;">
+        <span>支援鍵盤快捷鍵：[Q] 做多 / [W] 做空 / [Space] 平倉</span>
+        <span>交易模式：100% 全倉 All-In</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 結算畫面 -->
+  <div id="resultScreen" class="screen" style="max-width: 640px; text-align: center;">
+    <div class="terminal-card" style="padding: 44px 30px;">
+      <div id="resultIcon" style="font-size: 4rem; margin-bottom: 12px;">🏆</div>
+      <div id="resultTitleBadge" style="display: inline-block; font-size: 1.4rem; font-weight: 800; padding: 8px 24px; border-radius: 30px; margin-bottom: 16px;">
+        華爾街之狼
+      </div>
+      
+      <p id="resultComment" style="font-size: 1.05rem; color: #cbd5e1; margin-bottom: 28px; line-height: 1.6;">
+        評語內容
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; text-align: left;">
+        <div class="stat-box">
+          <div class="stat-title">最終結算本金</div>
+          <div id="finalCapitalDisplay" class="stat-val mono text-green">$0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">總收益率</div>
+          <div id="finalRoiDisplay" class="stat-val mono text-green">+0.00%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">總交易次數</div>
+          <div id="tradeCountDisplay" class="stat-val mono">0 次</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title">歷史最高資金</div>
+          <div id="peakCapitalDisplay" class="stat-val mono">$10,000.00</div>
+        </div>
+      </div>
+
+      <button id="restartBtn" class="btn btn-primary" style="font-size: 1.15rem; padding: 16px 40px; width: 100%;">
+        重新挑戰 🔄
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- 遊戲狀態 ---
+    const INITIAL_CAPITAL = 10000;
+    const INITIAL_PRICE = 1000;
+    const GAME_DURATION = 180; // 3 分鐘 = 180 秒
+
+    let capital = INITIAL_CAPITAL;
+    let peakCapital = INITIAL_CAPITAL;
+    let currentPrice = INITIAL_PRICE;
+    let previousPrice = INITIAL_PRICE;
+    let remainingTime = GAME_DURATION;
+    
+    // 持倉狀態: null | 'LONG' | 'SHORT'
+    let position = null;
+    let entryPrice = 0;
+    let tradeCount = 0;
+
+    let timerInterval = null;
+    let priceInterval = null;
+    let chartInstance = null;
+
+    // --- 音效模組 (Web Audio API) ---
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+      beep(freq, duration, type = 'sine') {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      },
+      win() {
+        [523, 659, 783, 1046].forEach((f, i) => {
+          setTimeout(() => this.beep(f, 0.15, 'triangle'), i * 60);
+        });
+      },
+      loss() {
+        [350, 240, 160].forEach((f, i) => {
+          setTimeout(() => this.beep(f, 0.16, 'sawtooth'), i * 80);
+        });
+      },
+      pump() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.2);
+        } catch(e) {}
+      },
+      dump() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.25);
+        } catch(e) {}
+      }
+    };
+
+    // --- DOM 元件 ---
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const resultScreen = document.getElementById('resultScreen');
+
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const longBtn = document.getElementById('longBtn');
+    const shortBtn = document.getElementById('shortBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    const timerDisplay = document.getElementById('timerDisplay');
+    const capitalDisplay = document.getElementById('capitalDisplay');
+    const totalReturnDisplay = document.getElementById('totalReturnDisplay');
+    const priceDisplay = document.getElementById('priceDisplay');
+    const positionBadge = document.getElementById('positionBadge');
+    const pnlDisplay = document.getElementById('pnlDisplay');
+    const alertBanner = document.getElementById('alertBanner');
+
+    // --- Chart.js 初始化 ---
+    function initChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      const initialLabels = Array.from({ length: 25 }, (_, i) => `-${(25 - i) * 0.5}s`);
+      const initialData = Array(25).fill(INITIAL_PRICE);
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: initialLabels,
+          datasets: [{
+            label: 'EXTREME/USD',
+            data: initialData,
+            borderColor: '#10b981',
+            borderWidth: 2.5,
+            fill: true,
+            backgroundColor: (context) => {
+              const chart = context.chart;
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return null;
+              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              gradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+              gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+              return gradient;
+            },
+            tension: 0.25,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 250 },
+          scales: {
+            x: {
+              display: false,
+              grid: { display: false }
+            },
+            y: {
+              position: 'right',
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { family: "'JetBrains Mono', monospace", size: 11 },
+                callback: (val) => '$' + Number(val).toFixed(0)
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: (ctx) => ' 價格: $' + Number(ctx.parsed.y).toFixed(2)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // --- 價格跳動機制 ---
+    function tickPrice() {
+      previousPrice = currentPrice;
+      const rand = Math.random();
+      let percentChange = 0;
+      let eventType = 'NORMAL';
+
+      if (rand < 0.8) {
+        // 80% 正常波動: -2% ~ +2%
+        percentChange = (Math.random() * 4 - 2) / 100;
+      } else if (rand < 0.9) {
+        // 10% 暴漲: +5% ~ +15%
+        percentChange = (Math.random() * 10 + 5) / 100;
+        eventType = 'PUMP';
+      } else {
+        // 10% 暴跌: -5% ~ -15%
+        percentChange = -(Math.random() * 10 + 5) / 100;
+        eventType = 'DUMP';
+      }
+
+      currentPrice = Math.max(1, currentPrice * (1 + percentChange));
+      currentPrice = Math.round(currentPrice * 100) / 100;
+
+      // 警報橫幅與音效
+      if (eventType === 'PUMP') {
+        showAlert(`🚀 巨鯨突襲！行情暴漲 +${(percentChange * 100).toFixed(1)}%！`, 'green');
+        AudioEngine.pump();
+      } else if (eventType === 'DUMP') {
+        showAlert(`💥 恐慌砸盤！崩盤暴跌 ${(percentChange * 100).toFixed(1)}%！`, 'red');
+        AudioEngine.dump();
+      }
+
+      // 更新價格 UI
+      const isUp = currentPrice >= previousPrice;
+      priceDisplay.textContent = currentPrice.toFixed(2);
+      priceDisplay.className = 'mono ' + (isUp ? 'text-green flash-up' : 'text-red flash-down');
+
+      // 更新走勢圖
+      if (chartInstance) {
+        const labels = chartInstance.data.labels;
+        const data = chartInstance.data.datasets[0].data;
+
+        labels.shift();
+        labels.push('');
+        data.shift();
+        data.push(currentPrice);
+
+        // 動態線條顏色
+        chartInstance.data.datasets[0].borderColor = isUp ? '#10b981' : '#ef4444';
+        chartInstance.update('none');
+      }
+
+      // 更新未實現損益
+      updatePnL();
+    }
+
+    function showAlert(msg, color) {
+      alertBanner.textContent = msg;
+      alertBanner.style.display = 'block';
+      if (color === 'green') {
+        alertBanner.style.background = 'rgba(16, 185, 129, 0.2)';
+        alertBanner.style.color = '#34d399';
+        alertBanner.style.border = '1px solid #10b981';
+      } else {
+        alertBanner.style.background = 'rgba(239, 68, 68, 0.2)';
+        alertBanner.style.color = '#f87171';
+        alertBanner.style.border = '1px solid #ef4444';
+      }
+      setTimeout(() => {
+        alertBanner.style.display = 'none';
+      }, 1400);
+    }
+
+    // --- 未實現損益計算 ---
+    function updatePnL() {
+      if (!position) {
+        positionBadge.className = 'bg-gray-soft';
+        positionBadge.innerHTML = '<span class="pulse-badge" style="background: #94a3b8;"></span> 目前空手';
+        pnlDisplay.textContent = '未實現損益: $0.00 (+0.00%)';
+        pnlDisplay.className = 'mono';
+        pnlDisplay.style.color = '#94a3b8';
+        return;
+      }
+
+      let pnlPercent = 0;
+      if (position === 'LONG') {
+        pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
+      } else {
+        pnlPercent = ((entryPrice - currentPrice) / entryPrice) * 100;
+      }
+
+      const pnlAmount = capital * (pnlPercent / 100);
+      const isProfit = pnlPercent >= 0;
+      const sign = isProfit ? '+' : '';
+
+      pnlDisplay.textContent = `未實現損益: ${sign}$${pnlAmount.toFixed(2)} (${sign}${pnlPercent.toFixed(2)}%)`;
+      pnlDisplay.className = 'mono ' + (isProfit ? 'text-green' : 'text-red');
+
+      // 檢查是否爆倉歸零 (虧損超過 100%)
+      if (capital + pnlAmount <= 0) {
+        closeTrade(true); // 爆倉強制平倉
+      }
+    }
+
+    // --- 交易邏輯 ---
+    function openTrade(type) {
+      if (position !== null) return;
+      position = type;
+      entryPrice = currentPrice;
+      tradeCount++;
+
+      AudioEngine.beep(type === 'LONG' ? 660 : 350, 0.1);
+
+      longBtn.disabled = true;
+      shortBtn.disabled = true;
+      closeBtn.disabled = false;
+
+      if (type === 'LONG') {
+        positionBadge.className = 'bg-green-soft text-green';
+        positionBadge.innerHTML = `<span class="pulse-badge" style="background: #10b981;"></span> 做多中 (開倉: $${entryPrice.toFixed(2)})`;
+      } else {
+        positionBadge.className = 'bg-red-soft text-red';
+        positionBadge.innerHTML = `<span class="pulse-badge" style="background: #ef4444;"></span> 做空中 (開倉: $${entryPrice.toFixed(2)})`;
+      }
+
+      updatePnL();
+    }
+
+    function closeTrade(isLiquidation = false) {
+      if (position === null) return;
+
+      let pnlPercent = 0;
+      if (position === 'LONG') {
+        pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
+      } else {
+        pnlPercent = ((entryPrice - currentPrice) / entryPrice) * 100;
+      }
+
+      capital = capital * (1 + pnlPercent / 100);
+      if (capital > peakCapital) peakCapital = capital;
+
+      if (pnlPercent >= 0) {
+        AudioEngine.win();
+      } else {
+        AudioEngine.loss();
+      }
+
+      position = null;
+      entryPrice = 0;
+
+      longBtn.disabled = false;
+      shortBtn.disabled = false;
+      closeBtn.disabled = true;
+
+      updateUI();
+      updatePnL();
+
+      // 本金 <= 0 遊戲提前結束
+      if (capital <= 0 || isLiquidation) {
+        capital = 0;
+        gameOver();
+      }
+    }
+
+    function updateUI() {
+      capitalDisplay.textContent = '$' + capital.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      const totalRoi = ((capital - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100;
+      const sign = totalRoi >= 0 ? '+' : '';
+      totalReturnDisplay.textContent = `${sign}${totalRoi.toFixed(2)}%`;
+      totalReturnDisplay.className = 'stat-val mono ' + (totalRoi >= 0 ? 'text-green' : 'text-red');
+    }
+
+    // --- 時間倒數 ---
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function startTimer() {
+      const startTime = Date.now();
+      const duration = GAME_DURATION;
+      timerDisplay.textContent = formatTime(duration);
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        remainingTime = Math.max(0, duration - elapsed);
+        timerDisplay.textContent = formatTime(remainingTime);
+
+        if (remainingTime <= 30) {
+          timerDisplay.style.color = '#ef4444';
+        }
+
+        if (remainingTime <= 0) {
+          clearInterval(timerInterval);
+          // 強制平倉
+          if (position !== null) {
+            closeTrade();
+          }
+          gameOver();
+        }
+      }, 250);
+    }
+
+    // --- 遊戲流程控制 ---
+    function startGame() {
+      AudioEngine.init();
+      AudioEngine.beep(880, 0.15);
+
+      capital = INITIAL_CAPITAL;
+      peakCapital = INITIAL_CAPITAL;
+      currentPrice = INITIAL_PRICE;
+      previousPrice = INITIAL_PRICE;
+      position = null;
+      tradeCount = 0;
+
+      longBtn.disabled = false;
+      shortBtn.disabled = false;
+      closeBtn.disabled = true;
+      timerDisplay.style.color = '#f59e0b';
+
+      welcomeScreen.classList.remove('active');
+      resultScreen.classList.remove('active');
+      gameScreen.classList.add('active');
+
+      updateUI();
+      initChart();
+
+      priceInterval = setInterval(tickPrice, 500);
+      startTimer();
+    }
+
+    function gameOver() {
+      clearInterval(timerInterval);
+      clearInterval(priceInterval);
+
+      if (position !== null) {
+        closeTrade();
+      }
+
+      gameScreen.classList.remove('active');
+      resultScreen.classList.add('active');
+
+      // 計算評語與稱號
+      const roi = ((capital - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100;
+      let title = '';
+      let comment = '';
+      let badgeStyle = '';
+      let icon = '🏆';
+
+      if (capital <= 0) {
+        title = '💀 超級大韭菜 (Liquidated)';
+        comment = '本金直接歸零！天台風很大，趕快回去老實打螺絲上班吧！';
+        badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444;';
+        icon = '💀';
+      } else if (capital < 5000) {
+        title = '📉 散戶提款機';
+        comment = '虧損超過 50%！市場主力發來感謝信，謝謝你提供無私的流動性！';
+        badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444;';
+        icon = '🤡';
+      } else if (capital < 10000) {
+        title = '🩹 輕度韭菜';
+        comment = '受了點皮肉傷，不過至少保住了大半本金，留得青山在！';
+        badgeStyle = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b;';
+        icon = '🩹';
+      } else if (capital === 10000) {
+        title = '🧘 佛系觀望者';
+        comment = '不賺不賠，分毫未損。在血流成河的市場裡，空手也是一種高超境界！';
+        badgeStyle = 'background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid #64748b;';
+        icon = '🧘';
+      } else if (capital < 20000) {
+        title = '📈 初級套利客';
+        comment = '小賺就是贏！你在 3 分鐘內跑贏了市場上 85% 的衝動散戶！';
+        badgeStyle = 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981;';
+        icon = '🎉';
+      } else if (capital < 50000) {
+        title = '🚀 激進操盤手';
+        comment = '本金翻倍暴賺！盤感神級敏銳，刀尖舔血還能全身而退！';
+        badgeStyle = 'background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981;';
+        icon = '🚀';
+      } else if (capital < 100000) {
+        title = '👑 市場造市巨鯨';
+        comment = '翻了 5 倍以上！你的每筆買賣都在影響大盤走勢，主力都要向你致敬！';
+        badgeStyle = 'background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(16, 185, 129, 0.3)); color: #fde68a; border: 1px solid #f59e0b;';
+        icon = '👑';
+      } else {
+        title = '🐺 華爾街之狼';
+        comment = '突破十萬美元大關！神級操作載入金融史冊，全華爾街都在抄你的作業！';
+        badgeStyle = 'background: linear-gradient(135deg, #10b981, #3b82f6); color: #ffffff;';
+        icon = '🐺';
+      }
+
+      document.getElementById('resultIcon').textContent = icon;
+      const titleBadge = document.getElementById('resultTitleBadge');
+      titleBadge.textContent = title;
+      titleBadge.style.cssText = badgeStyle;
+
+      document.getElementById('resultComment').textContent = comment;
+      document.getElementById('finalCapitalDisplay').textContent = '$' + capital.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      const roiSign = roi >= 0 ? '+' : '';
+      const roiEl = document.getElementById('finalRoiDisplay');
+      roiEl.textContent = `${roiSign}${roi.toFixed(2)}%`;
+      roiEl.className = 'stat-val mono ' + (roi >= 0 ? 'text-green' : 'text-red');
+
+      document.getElementById('tradeCountDisplay').textContent = `${tradeCount} 次`;
+      document.getElementById('peakCapitalDisplay').textContent = '$' + peakCapital.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // --- 事件綁定 ---
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+    longBtn.addEventListener('click', () => openTrade('LONG'));
+    shortBtn.addEventListener('click', () => openTrade('SHORT'));
+    closeBtn.addEventListener('click', () => closeTrade(false));
+
+    // 鍵盤快捷鍵支援
+    window.addEventListener('keydown', (e) => {
+      if (!gameScreen.classList.contains('active')) return;
+      const key = e.key.toLowerCase();
+      if ((key === 'q' || key === 'l') && !longBtn.disabled) {
+        openTrade('LONG');
+      } else if ((key === 'w' || key === 's') && !shortBtn.disabled) {
+        openTrade('SHORT');
+      } else if ((key === ' ' || key === 'e' || key === 'c') && !closeBtn.disabled) {
+        e.preventDefault();
+        closeTrade(false);
+      }
+    });
+  </script>
+</body>
+</html>
